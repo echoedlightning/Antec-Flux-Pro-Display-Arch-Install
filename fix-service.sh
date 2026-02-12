@@ -24,19 +24,41 @@ fi
 printf "\nDetecting CPU temperature sensor...\n"
 CPU_SENSOR=""
 
-# Look for k10temp (AMD)
-K10TEMP=$(find /sys/class/hwmon -type f -name "temp1_input" 2>/dev/null | while read -r sensor; do
-    name_file=$(dirname "$sensor")/name
-    if [ -f "$name_file" ] && grep -q "k10temp" "$name_file" 2>/dev/null; then
-        echo "$sensor"
-        break
+# Look for k10temp (AMD) by searching all hwmon directories
+for hwmon_dir in /sys/class/hwmon/hwmon*; do
+    if [ -f "$hwmon_dir/name" ]; then
+        name=$(cat "$hwmon_dir/name" 2>/dev/null)
+        if [ "$name" = "k10temp" ]; then
+            # Found k10temp, now look for Tctl
+            for sensor in "$hwmon_dir"/temp*_input; do
+                if [ -f "$sensor" ]; then
+                    label_file="${sensor%_input}_label"
+                    if [ -f "$label_file" ]; then
+                        label=$(cat "$label_file" 2>/dev/null)
+                        if [ "$label" = "Tctl" ]; then
+                            CPU_SENSOR="$sensor"
+                            printf "✓ Found AMD CPU sensor (k10temp Tctl): %s\n" "$CPU_SENSOR"
+                            break 2
+                        fi
+                    fi
+                done
+            done
+            # If no Tctl found, use first temp input from k10temp
+            if [ -z "$CPU_SENSOR" ] && [ -f "$hwmon_dir/temp1_input" ]; then
+                CPU_SENSOR="$hwmon_dir/temp1_input"
+                printf "✓ Found AMD CPU sensor (k10temp): %s\n" "$CPU_SENSOR"
+                break
+            fi
+        elif [ "$name" = "coretemp" ] && [ -z "$CPU_SENSOR" ]; then
+            # Intel CPU
+            if [ -f "$hwmon_dir/temp1_input" ]; then
+                CPU_SENSOR="$hwmon_dir/temp1_input"
+                printf "✓ Found Intel CPU sensor (coretemp): %s\n" "$CPU_SENSOR"
+                break
+            fi
+        fi
     fi
-done)
-
-if [ -n "$K10TEMP" ]; then
-    CPU_SENSOR="$K10TEMP"
-    printf "✓ Found AMD CPU sensor (k10temp): %s\n" "$CPU_SENSOR"
-fi
+done
 
 # Fallback to first available temp sensor
 if [ -z "$CPU_SENSOR" ]; then
@@ -148,5 +170,3 @@ printf "  Config: /etc/af-pro-display/config.toml\n"
 printf "  CPU Sensor: %s\n" "$CPU_SENSOR"
 printf "\nTo enable autostart: sudo systemctl enable af-pro-display\n"
 printf "To view logs: journalctl -u af-pro-display -f\n"
-
-hi
