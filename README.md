@@ -215,6 +215,8 @@ Contributions are welcome! This is an Arch-specific fork. For general applicatio
 3. Test on Arch Linux
 4. Submit a pull request
 
+   {Looking for someone to try and get AMD GPU Support so feel free to even vibe code your own solution or reach out to me in issues and hopefully we get something together and make the best service}
+
 
 ## 🎉 Getting Started
 
