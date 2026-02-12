@@ -22,13 +22,13 @@ This is an Arch Linux adaptation of the [antec-flux-pro-display](https://github.
 ### Method 1: Quick Install Script (Recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/echoedlightning/Antec-Flux-Pro-Display-Arch-Install/main/install-arch.sh | bash
+curl -fsSL https://raw.githubusercontent.com/echoedlightning/antec-flux-pro-display-arch/main/install-arch.sh | bash
 ```
 
 Or download and run manually:
 
 ```bash
-wget https://raw.githubusercontent.com/echoedlightning/Antec-Flux-Pro-Display-Arch-Install/main/install-arch.sh
+wget https://raw.githubusercontent.com/echoedlightning/antec-flux-pro-display-arch/main/install-arch.sh
 chmod +x install-arch.sh
 ./install-arch.sh
 ```
@@ -44,7 +44,7 @@ sudo pacman -S nvidia-utils
 
 2. Clone and build:
 ```bash
-git clone https://github.com/echoedlightning/Antec-Flux-Pro-Display-Arch-Install.git
+git clone https://github.com/echoedlightning/antec-flux-pro-display-arch.git
 cd antec-flux-pro-display-arch
 cargo build --release
 ```
