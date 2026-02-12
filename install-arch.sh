@@ -17,32 +17,46 @@ fi
 # Check if running on Arch Linux
 if ! [ -f /etc/arch-release ]; then
     printf "Warning: This script is designed for Arch Linux.\n"
-    printf "Continue anyway? (y/N) "
-    read -r reply
-    if [[ ! $reply =~ ^[Yy]$ ]]; then
-        exit 1
+    if [ -t 0 ]; then
+        printf "Continue anyway? (y/N) "
+        read -r reply
+        if [[ ! $reply =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    else
+        printf "Non-interactive mode: skipping confirmation\n"
     fi
 fi
 
 # Install dependencies
 printf "Installing dependencies...\n"
-sudo pacman -S --needed rust cargo git base-devel systemd
+sudo pacman -S --needed --noconfirm rust cargo git base-devel systemd
 
-# Optional: Install lm_sensors for finding CPU temperature path
-printf "Install lm_sensors to help find CPU temperature sensors? (y/N) "
-read -r reply
-if [[ $reply =~ ^[Yy]$ ]]; then
-    sudo pacman -S --needed lm_sensors
-    printf "Run 'sensors' to find your CPU temperature device path\n"
+# Auto-install lm_sensors in non-interactive mode, prompt in interactive mode
+if [ -t 0 ]; then
+    printf "Install lm_sensors to help find CPU temperature sensors? (y/N) "
+    read -r reply
+    if [[ $reply =~ ^[Yy]$ ]]; then
+        sudo pacman -S --needed --noconfirm lm_sensors
+        printf "Run 'sensors' to find your CPU temperature device path\n"
+    fi
+else
+    printf "Installing lm_sensors (non-interactive mode)...\n"
+    sudo pacman -S --needed --noconfirm lm_sensors
 fi
 
 # Optional: Install NVIDIA drivers if GPU is present
-if lspci | grep -i nvidia > /dev/null 2>&1; then
+if lspci 2>/dev/null | grep -i nvidia > /dev/null 2>&1; then
     printf "NVIDIA GPU detected.\n"
-    printf "Install nvidia-utils for GPU temperature monitoring? (y/N) "
-    read -r reply
-    if [[ $reply =~ ^[Yy]$ ]]; then
-        sudo pacman -S --needed nvidia-utils
+    if [ -t 0 ]; then
+        printf "Install nvidia-utils for GPU temperature monitoring? (y/N) "
+        read -r reply
+        if [[ $reply =~ ^[Yy]$ ]]; then
+            sudo pacman -S --needed --noconfirm nvidia-utils
+        fi
+    else
+        printf "Installing nvidia-utils (non-interactive mode)...\n"
+        sudo pacman -S --needed --noconfirm nvidia-utils
     fi
 fi
 
