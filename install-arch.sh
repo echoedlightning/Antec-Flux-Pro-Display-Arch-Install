@@ -120,32 +120,39 @@ CPU_TEMP_PATH=""
 
 # First, try to find k10temp (AMD CPUs) - prioritize Tctl
 printf "Detecting CPU temperature sensor...\n"
-for sensor in $(find /sys/class/hwmon -name "temp*_input" 2>/dev/null); do
-    hwmon_dir=$(dirname "$sensor")
+
+# Search all hwmon directories for k10temp
+for hwmon_dir in /sys/class/hwmon/hwmon*; do
     if [ -f "$hwmon_dir/name" ]; then
         name=$(cat "$hwmon_dir/name" 2>/dev/null)
         if [ "$name" = "k10temp" ]; then
-            # Check for Tctl label (preferred for AMD)
-            label_file="${sensor%_input}_label"
-            if [ -f "$label_file" ]; then
-                label=$(cat "$label_file" 2>/dev/null)
-                if [ "$label" = "Tctl" ]; then
-                    CPU_TEMP_PATH="$sensor"
-                    printf "Found AMD CPU sensor (k10temp Tctl): %s\n" "$CPU_TEMP_PATH"
-                    break
-                fi
-            fi
-            # Fallback to any k10temp sensor
-            if [ -z "$CPU_TEMP_PATH" ]; then
-                CPU_TEMP_PATH="$sensor"
+            # Found k10temp, now look for Tctl
+            for sensor in "$hwmon_dir"/temp*_input; do
+                if [ -f "$sensor" ]; then
+                    label_file="${sensor%_input}_label"
+                    if [ -f "$label_file" ]; then
+                        label=$(cat "$label_file" 2>/dev/null)
+                        if [ "$label" = "Tctl" ]; then
+                            CPU_TEMP_PATH="$sensor"
+                            printf "Found AMD CPU sensor (k10temp Tctl): %s\n" "$CPU_TEMP_PATH"
+                            break 2
+                        fi
+                    fi
+                done
+            done
+            # If no Tctl found, use first temp input from k10temp
+            if [ -z "$CPU_TEMP_PATH" ] && [ -f "$hwmon_dir/temp1_input" ]; then
+                CPU_TEMP_PATH="$hwmon_dir/temp1_input"
                 printf "Found AMD CPU sensor (k10temp): %s\n" "$CPU_TEMP_PATH"
                 break
             fi
         elif [ "$name" = "coretemp" ] && [ -z "$CPU_TEMP_PATH" ]; then
-            # Intel CPU
-            CPU_TEMP_PATH="$sensor"
-            printf "Found Intel CPU sensor (coretemp): %s\n" "$CPU_TEMP_PATH"
-            break
+            # Intel CPU - use Package temp if available, otherwise temp1
+            if [ -f "$hwmon_dir/temp1_input" ]; then
+                CPU_TEMP_PATH="$hwmon_dir/temp1_input"
+                printf "Found Intel CPU sensor (coretemp): %s\n" "$CPU_TEMP_PATH"
+                break
+            fi
         fi
     fi
 done
@@ -168,6 +175,8 @@ if [ -f "$CPU_TEMP_PATH" ] && [ -r "$CPU_TEMP_PATH" ]; then
         temp_c=$((temp_raw / 1000))
         printf "Sensor test successful - Current temperature: %d°C\n" "$temp_c"
     fi
+else
+    printf "Warning: Unable to read sensor at %s\n" "$CPU_TEMP_PATH"
 fi
 
 # Create config file
